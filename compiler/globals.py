@@ -4,12 +4,13 @@ the global OpenRAM setup as well.
 """
 import os
 import debug
-import shutil
+import shutil                     
 import optparse
-import options
+import options                    # contains variables with openRAM options
+                                  # all others are built-in libraries
 import sys
-import re
-import importlib
+import re                         # regular expression matching library
+import importlib                 
 
 # Current version of OpenRAM.
 VERSION = "1.0"
@@ -31,20 +32,29 @@ BANNER = """\
 USAGE = "usage: openram.py [options] <config file>\n"
 
 # Anonymous object that will be the options
-OPTS = options.options()
+OPTS = options.options()            # variable enlisting options in 'options.py'
 
-def is_exe(fpath):
+def is_exe(fpath):                  # Is path accessible, with execution permission?
     return os.path.exists(fpath) and os.access(fpath, os.X_OK)
 
 # parse the optional arguments
 # this only does the optional arguments
 
+# What the two comments above are for? Seem like an artifact
+
 
 def parse_args():
     """Parse the arguments and initialize openram"""
-
+    
+    # parses user input, modifies option variables' values in OPTS,
+    # and returns options and arguments provided by the user
+    
+    
     global OPTS
 
+    # array of options; 'dest' variable names the same as those in options, as
+    # expected :)
+    
     option_list = {
         optparse.make_option("-b", "--backannotated", dest="run_pex",
                              help="back annotated simulation for characterizer"),
@@ -68,17 +78,27 @@ def parse_args():
     }
 # -h --help is implicit.
 
+    #defining a parser object with option list above
     parser = optparse.OptionParser(option_list=option_list,
                                    description="Compile and/or characterize an SRAM.",
                                    usage=USAGE,
                                    version="sramc v" + VERSION)
-
+    
+    # scans the terminal input, stores the results as follows
+    # options - an object containing values for all of your options
+    # e.g., options.out_name will give the out_name input by user
+    # args - the list of positional arguments leftover after parsing options
     (options, args) = parser.parse_args(values=OPTS)
+    
+    # here, we are passing a values object OPTS, which stores 'option arguments'
+    # the variables in OPTS will be modified according to the values provided by
+    # the user
+    # the variable 'options' will be the same as OPTS after execution
 
     return (options, args)
 
 
-def get_opts():
+def get_opts():                      # get options 
     return(OPTS)
 
 
@@ -87,26 +107,31 @@ def init_openram(config_file):
 
     debug.info(1,"Initializing OpenRAM...")
 
-    setup_paths()
+    setup_paths()           # Set up paths for gdsMill, tests, 
+                            # characterizer, temporary files, and output
 
-    read_config(config_file)
+    read_config(config_file) # reads config_file and imports it into OPTS.config
     
-    import_tech()
+    import_tech()   # set the technology path in OPTS, and import the setup scripts
 
-    set_spice()
+    set_spice()     # set Spice executable path in OPTS.spice_exe, and set
+                    # input dir for spice files if ngspice is used
 
-    set_calibre()
+    set_calibre()   # set Calibre executable path in OPTS.calibre_exe, else
+                    # skip LVS/DRC
 
 def read_config(config_file):
     global OPTS
     
     OPTS.config_file = config_file
     OPTS.config_file = re.sub(r'\.py$', "", OPTS.config_file)
+    # remove all '*.py' from/in the config_file
 
     # dynamically import the configuration file of which modules to use
     debug.info(1, "Configuration file is " + OPTS.config_file + ".py")
     try:
         OPTS.config = importlib.import_module(OPTS.config_file)
+        # import_module used as module name is a variable
     except:
         debug.error("Unable to read configuration file: {0}".format(OPTS.config_file+".py. Did you specify the technology?"),2)
 
@@ -137,6 +162,9 @@ def set_calibre():
 
 def setup_paths():
     """ Set up the non-tech related paths. """
+    
+    # paths for gdsMill, tests, characterizer, temporary files, and output
+    
     debug.info(2,"Setting up paths...")
 
     global OPTS
@@ -153,8 +181,9 @@ def setup_paths():
     debug.info(1, "Temporary files saved in " + OPTS.openram_temp)
 
     # we should clean up this temp directory after execution...
+    # emptying temp directory
     if os.path.exists(OPTS.openram_temp):
-        shutil.rmtree(OPTS.openram_temp, ignore_errors=True)
+        shutil.rmtree(OPTS.openram_temp, ignore_errors=True) # recursive delete
 
     # make the directory if it doesn't exist
     try:
@@ -171,6 +200,7 @@ def setup_paths():
         if e.errno == 17:  # errno.EEXIST
             os.chmod(OPTS.out_path, 0750)
     
+    # path string manipulations
     if OPTS.out_path=="":
         OPTS.out_path="."
     if not OPTS.out_path.endswith('/'):
@@ -182,8 +212,8 @@ def set_spice():
     debug.info(2,"Finding spice...")
     global OPTS
 
-    # set the input dir for spice files if using ngspice (not needed for
-    # hspice)
+    # set the input dir for spice files as the temp directory 
+    # if using ngspice (not needed for hspice)
     if OPTS.spice_version == "ngspice":
         os.environ["NGSPICE_INPUT_DIR"] = "{0}".format(OPTS.openram_temp)
 
@@ -210,6 +240,9 @@ def import_tech():
 
         # environment variable should point to the technology dir
     OPTS.openram_tech = os.path.abspath(os.environ.get("OPENRAM_TECH")) + "/" + OPTS.tech_name
+    # setting technology directory path to the 'openram_tech' option,
+    # which was not filled by the user
+    
     if not OPTS.openram_tech.endswith('/'):
         OPTS.openram_tech += "/"
     debug.info(1, "Technology path is " + OPTS.openram_tech)

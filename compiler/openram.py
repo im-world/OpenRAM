@@ -20,11 +20,23 @@ import sys,os
 import datetime
 import re
 import importlib
-import globals
+import globals      # globals.py - contains code for terminal parsing, setting
+                    # options in OPTS, and setting appropriate paths for technology
+                    # scripts, gdsMill, tests, characterizer, temp dir, output
+                    # dir, Spice executable, and Calibre executable
 
-global OPTS
+global OPTS         # global keyword allows defining a global variable within a 
+                    # function. 
+                    
+                    # OPTS contains all the options listed in the options.py
+                    # file, along with a few other properties
 
-(OPTS, args) = globals.parse_args()
+(OPTS, args) = globals.parse_args()     # not very sure, but seems like it is
+                                        # a way to retrieve global variables 
+                                        # and store them in OPTS and args
+                                        
+                                        # going to globals.py from here for 
+                                        # better understanding
 
 # These depend on arguments, so don't load them until now.
 import debug
