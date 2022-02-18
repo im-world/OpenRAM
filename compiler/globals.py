@@ -33,6 +33,7 @@ USAGE = "usage: openram.py [options] <config file>\n"
 
 # Anonymous object that will be the options
 OPTS = options.options()            # variable enlisting options in 'options.py'
+# going to options from here
 
 def is_exe(fpath):                  # Is path accessible, with execution permission?
     return os.path.exists(fpath) and os.access(fpath, os.X_OK)

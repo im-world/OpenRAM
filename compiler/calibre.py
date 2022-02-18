@@ -7,6 +7,11 @@ contained in this file.  Replacing with another DRC/LVS tool involves
 rewriting this code to work properly. Porting to a new technology in
 Calibre means pointing the code to the proper DRC and LVS rule files.
 
+
+runset file: contains a full set of conditions for a program to be run 
+(e.g extraction, simulation), plus the locations (paths) of all necessary 
+(input & output) files
+
 A calibre DRC runset file contains, at the minimum, the following information:
 
 *drcRulesFile: /mada/software/techfiles/FreePDK45/ncsu_basekit/techfile/calibre/calibreDRC.rul
@@ -57,17 +62,20 @@ import os
 import re
 import time
 import debug
-import globals
+import globals      # globals.py - contains code for terminal parsing, setting
+                    # options in OPTS, and setting appropriate paths for technology
+                    # scripts, gdsMill, tests, characterizer, temp dir, output
+                    # dir, Spice executable, and Calibre executable
 import subprocess
 
 
-def run_drc(name, gds_name):
+def run_drc(name, gds_name):    # returns number of errors
     """Run DRC check on a given top-level name which is
        implemented in gds_name."""
     OPTS = globals.get_opts()
 
     # the runset file contains all the options to run calibre
-    from tech import drc
+    from tech import drc             # tech.py in technology; drc rules and parameters imported
     drc_rules = drc["drc_rules"]
 
     drc_runset = {
@@ -94,15 +102,23 @@ def run_drc(name, gds_name):
     errfile = "%s%s.drc.err" % (OPTS.openram_temp, name)
     outfile = "%s%s.drc.out" % (OPTS.openram_temp, name)
 
+    # running command to start calibre with given DRC runset file
     cmd = "{0} -gui -drc {1}drc_runset -batch 2> {2} 1> {3}".format(
         OPTS.calibre_exe, OPTS.openram_temp, errfile, outfile)
     debug.info(1, cmd)
     os.system(cmd)
 
+    ## I'm not sure how do they deal with delay caused by the execution of
+    ## the Calibre command. The result file will take some time to generate,
+    ## but the program has no delay/wait/pause statement
+
     # check the result for these lines in the summary:
     # TOTAL Original Layer Geometries: 106 (157)
     # TOTAL DRC RuleChecks Executed:   156
     # TOTAL DRC Results Generated:     0 (0)
+   
+    # Instead of searching, they take advantage of fixed position of the required
+    # data in the file
     f = open(drc_runset['drcSummaryFile'], "r")
     results = f.readlines()
     f.close()
@@ -123,7 +139,7 @@ def run_drc(name, gds_name):
     return errors
 
 
-def run_lvs(name, gds_name, sp_name):
+def run_lvs(name, gds_name, sp_name):   # returns number of errors
     """Run LVS check on a given top-level name which is
        implemented in gds_name and sp_name. """
     OPTS = globals.get_opts()
@@ -164,6 +180,7 @@ def run_lvs(name, gds_name, sp_name):
     errfile = "%s%s.lvs.err" % (OPTS.openram_temp, name)
     outfile = "%s%s.lvs.out" % (OPTS.openram_temp, name)
 
+    # running command to start calibre with given LVS runset file
     cmd = "calibre -gui -lvs %slvs_runset -batch 2> %s 1> %s" % (
         OPTS.openram_temp, errfile, outfile)
     debug.info(2, cmd)
@@ -225,7 +242,8 @@ def run_lvs(name, gds_name, sp_name):
     return summary_errors + out_errors + ext_errors
 
 
-def run_pex(name, gds_name, sp_name, output=None):
+# pex = parasitic extraction
+def run_pex(name, gds_name, sp_name, output=None):  # returns number of errors
     """Run pex on a given top-level name which is
        implemented in gds_name and sp_name. """
     OPTS = globals.get_opts()
@@ -266,6 +284,7 @@ def run_pex(name, gds_name, sp_name, output=None):
     errfile = "{0}{1}.pex.err".format(OPTS.openram_temp, name)
     outfile = "{0}{1}.pex.out".format(OPTS.openram_temp, name)
 
+    # running command for PEX
     cmd = "{0} -gui -pex {1}pex_runset -batch 2> {2} 1> {3}".format(OPTS.calibre_exe,
                                                                     OPTS.openram_temp,
                                                                     errfile,
@@ -286,13 +305,20 @@ def run_pex(name, gds_name, sp_name, output=None):
 
     out_errors = len(stdouterrors)
 
-    assert(os.path.isfile(output))
+    assert(os.path.isfile(output))          # see if output file exists
     correct_port(name, output, sp_name)
 
     return out_errors
 
 
 def correct_port(name, output_file_name, ref_file_name):
+    
+    # Replaces circuit definition file in the output file by that in present 
+    # in the reference file (LVS Source Path)
+    
+    # Useful Documentation
+    # https://www.geeksforgeeks.org/python-seek-function/ 
+    
     pex_file = open(output_file_name, "r")
     contents = pex_file.read()
     # locate the start of circuit definition line
@@ -305,21 +331,23 @@ def correct_port(name, output_file_name, ref_file_name):
     match_index_end = match.start()
     # store the unchanged part of pex file in memory
     pex_file.seek(0)
-    part1 = pex_file.read(match_index_start)
+    part1 = pex_file.read(match_index_start)    # read till before circuit 
+                                                # definition line
     pex_file.seek(match_index_start + match_index_end)
-    part2 = pex_file.read()
+    part2 = pex_file.read()                     # read after the circuit
+                                                # definition line    
     pex_file.close()
 
     # obatin the correct definition line from the original spice file
     sp_file = open(ref_file_name, "r")
     contents = sp_file.read()
     circuit_title = re.search(".SUBCKT " + str(name) + ".*\n", contents)
-    circuit_title = circuit_title.group()
+    circuit_title = circuit_title.group() # https://www.geeksforgeeks.org/re-matchobject-group-function-in-python-regex/
     sp_file.close()
 
     # write the new pex file with info in the memory
     output_file = open(output_file_name, "w")
-    output_file.write(part1)
-    output_file.write(circuit_title)
-    output_file.write(part2)
+    output_file.write(part1)                    # content before circuit def line
+    output_file.write(circuit_title)            # circuit def line
+    output_file.write(part2)                    # content after circuit def line
     output_file.close()
