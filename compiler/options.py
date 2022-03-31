@@ -1,7 +1,17 @@
-import optparse
-import getpass 
+import optparse             # library used to take options as command
+                            # line inputs (e.g. -r, -a); a good example:  
+                            # https://docs.python.org/3/library/optparse.html
 
-class options(optparse.Values):
+import getpass              # username and password library
+
+class options(optparse.Values): # It seems like the optparse.Values argument 
+                                # contains the values provided by the user,
+                                # which it replaces in these variables somehow,
+                                # maybe by using the 'dest' option while 
+                                # defining the 'optparse' object
+                                
+                                # no explicit mention of the 'optparse' input
+                                # argument is made in the class
     """
     Class for holding all of the OpenRAM options.
     """

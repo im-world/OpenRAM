@@ -1,6 +1,6 @@
 import itertools
 import geometry
-import gdsMill
+import gdsMill             #standard package
 import debug
 from tech import drc, GDS
 from tech import layer as techlayer

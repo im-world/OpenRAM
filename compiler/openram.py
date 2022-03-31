@@ -20,24 +20,40 @@ import sys,os
 import datetime
 import re
 import importlib
-import globals
+import globals      # globals.py - contains code for terminal parsing, setting
+                    # options in OPTS, and setting appropriate paths for technology
+                    # scripts, gdsMill, tests, characterizer, temp dir, output
+                    # dir, Spice executable, and Calibre executable
 
-global OPTS
+global OPTS         # global keyword allows defining and using a global variable within a 
+                    # function. 
+                    
+                    # OPTS contains all the options listed in the options.py
+                    # file, along with a few other properties
 
-(OPTS, args) = globals.parse_args()
+(OPTS, args) = globals.parse_args()     # call to parse_args() function of 
+                                        # globals class; 
+# parses user input, modifies option variables' values in OPTS,
+# and returns options and arguments provided by the user
+                                        
+                                        # going to globals.py from here for 
+                                        # better understanding
 
 # These depend on arguments, so don't load them until now.
 import debug
 
 # required positional args for using openram main exe
-if len(args) < 1:
+if len(args) < 1:               #checks terminal imput syntax
     print globals.USAGE
     sys.exit(2)
         
 if OPTS.print_banner:
-    print globals.BANNER
+    print globals.BANNER        # handling print_banner option (-q)
 
-globals.init_openram(args[0])
+globals.init_openram(args[0])   
+# sets up paths for gdsMill, tests, characterizer, temporary files, output,
+# technology files and scripts, SPICE, and calibre; reads config_file and imports
+# it into OPTS
 
 # Check if all arguments are integers for bits, size, banks
 if type(OPTS.config.word_size)!=int:
@@ -50,10 +66,12 @@ if type(OPTS.config.num_banks)!=int:
 if not OPTS.config.tech_name:
     debug.error("Tech name must be specified in config file.")
 
+# reading parameters from the config file
 word_size = OPTS.config.word_size
 num_words = OPTS.config.num_words
 num_banks = OPTS.config.num_banks
 
+# set output name if not given
 if (OPTS.out_name == ""):
     OPTS.out_name = "sram_{0}_{1}_{2}_{3}".format(word_size,
                                                   num_words,
@@ -66,7 +84,8 @@ print "Technology: %s" % (OPTS.tech_name)
 print "Word size: {0}\nWords: {1}\nBanks: {2}".format(word_size,num_words,num_banks)
 
 # only start importing modules after we have the config file
-import calibre
+# These are pretty large files (in terms of lines of code)
+import calibre         # going to calibre.py from here
 import sram
 
 print "Start: ", datetime.datetime.now()
